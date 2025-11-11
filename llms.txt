@@ -1,0 +1,329 @@
+# @sonabuild/kit
+
+Client SDK for building attested Solana transactions using Trusted Execution Environments (TEEs).
+
+## Installation
+
+```bash
+npm install @sonabuild/kit
+```
+
+## Quick Start
+
+```javascript
+import { Sona } from '@sonabuild/kit';
+
+// Minimal configuration
+const sona = new Sona({
+  wallet: 'your-wallet-pubkey'
+});
+
+// Build attested transaction
+const intent = await sona.solend.deposit({
+  amount: 1000000,
+  userPubkey: 'your-wallet-pubkey'
+});
+
+// Verify and confirm
+const isValid = await intent.verify();
+const result = await intent.confirm(async (intents) => {
+  // Your signing logic
+});
+```
+
+## Core API
+
+### Sona Constructor
+
+```javascript
+new Sona({
+  wallet: string,           // Wallet public key (required for most operations)
+  baseUrl: string,          // API endpoint (default: 'https://api.sona.build')
+  apiKey: string,           // Optional API authentication key
+  origin: string,           // Origin for enclave validation (default: 'https://app.sona.build')
+  timeout: number,          // Request timeout in ms (default: 30000)
+  headers: object,          // Custom headers for all requests
+  debug: boolean            // Enable debug logging (default: false)
+})
+```
+
+### Dynamic Routing Pattern
+
+The SDK uses a Proxy-based dynamic routing system. Available routes are discovered via the `/meta` endpoint:
+
+**To discover available routes:**
+```javascript
+// Fetch metadata from the API
+const response = await fetch('https://api.sona.build/meta', {
+  headers: { 'x-api-key': 'your-api-key' } // Optional
+});
+const meta = await response.json();
+
+// meta.routes contains all available protocol actions
+// Example structure:
+// {
+//   routes: {
+//     "/solend/deposit": { attested: true, ... },
+//     "/marinade/stake": { attested: true, ... },
+//     "/jupiter/swap": { attested: true, ... }
+//   }
+// }
+```
+
+**Route format:**
+- Routes in `/meta` have format: `"/protocol/action"`
+- SDK calls use format: `sona.protocol.action(payload)`
+- Example: `"/solend/deposit"` → `sona.solend.deposit({ ... })`
+
+**Dynamic method calls:**
+```javascript
+// Pattern: sona.{protocol}.{action}(payload)
+await sona.solend.deposit({ amount: 1000000 });
+await sona.marinade.stake({ amount: 5000000 });
+await sona.jupiter.swap({ inputMint: 'SOL', outputMint: 'USDC', amount: 100 });
+```
+
+The SDK automatically:
+1. Fetches and caches route metadata from `/meta`
+2. Validates the route exists
+3. Determines if it's an attested or plain route
+4. Handles encryption for attested routes
+
+### Intent Object
+
+Returned by attested route calls. Represents a signed transaction with integrity verification.
+
+**Properties:**
+- `serializedMessageB64`: Base64-encoded Solana transaction
+- `integritySigB64`: Base64-encoded Ed25519 signature
+- `integrityPubkeyB64`: Base64-encoded Ed25519 public key
+
+**Methods:**
+
+```javascript
+// Verify Ed25519 signature
+await intent.verify(): Promise<boolean>
+
+// Get base64 transaction for signing
+intent.getTransaction(): string
+
+// Verify and execute transaction
+await intent.confirm(sendFn): Promise<any>
+// sendFn receives array of intents and should sign/send them
+```
+
+### Utility Functions
+
+```javascript
+import { clearMetaCache, clearSessionCache, setDebug } from '@sonabuild/kit';
+
+clearMetaCache();     // Force refresh of route metadata
+clearSessionCache();  // Force refresh of encryption session
+setDebug(true);       // Enable debug logging
+```
+
+## Common Patterns
+
+### Building and Verifying Transactions
+
+```javascript
+// 1. Build attested transaction
+const intent = await sona.protocol.action({
+  amount: 1000000,
+  userPubkey: wallet.publicKey.toBase58()
+});
+
+// 2. Verify integrity signature
+const isValid = await intent.verify();
+if (!isValid) {
+  throw new Error('Transaction verification failed');
+}
+
+// 3. Sign and send
+const result = await intent.confirm(async (intents) => {
+  const tx = intents[0].getTransaction(); // base64 serialized message
+  // Decode, sign, and send transaction
+  return signature;
+});
+```
+
+### Error Handling
+
+```javascript
+try {
+  const intent = await sona.protocol.action(payload);
+} catch (error) {
+  if (error.message.includes('stale ciphertext')) {
+    // Automatic retry with fresh session (handled internally)
+  }
+  if (error.message.includes('timeout')) {
+    // Request exceeded configured timeout
+  }
+  if (error.message.includes('not available')) {
+    // Protocol/action not available for this API key
+  }
+}
+```
+
+### Custom Configuration
+
+```javascript
+// Production configuration with custom settings
+const sona = new Sona({
+  baseUrl: 'https://api.sona.build',
+  apiKey: process.env.SONA_API_KEY,
+  wallet: userWallet.publicKey.toBase58(),
+  timeout: 60000,  // 60 second timeout for slow operations
+  headers: {
+    'x-app-version': '1.0.0',
+    'x-environment': 'production'
+  },
+  debug: false
+});
+```
+
+### Debug Mode
+
+```javascript
+import { Sona, setDebug } from '@sonabuild/kit';
+
+// Enable debug logging
+setDebug(true);
+
+// Or via constructor
+const sona = new Sona({
+  wallet: 'your-wallet',
+  debug: true
+});
+
+// Logs will show:
+// [Sona:Session] Session fetch details
+// [Sona:Crypto] Encryption operations
+// [Sona:Request] API requests
+// [Sona:Attestation] Signature verification
+// [Sona:Perf] Performance metrics
+```
+
+## Route Types
+
+### Attested Routes (routes.attested: true)
+- Use full encryption flow with X25519 sealed box
+- Payload encrypted with session public key
+- Return signed transaction with integrity signature
+- Require verification before signing
+
+### Plain Routes (routes.attested: false)
+- Send plain JSON POST requests
+- No encryption or signature verification
+- Used for non-sensitive operations
+
+The SDK automatically handles both types based on `/meta` route configuration.
+
+## Security Considerations
+
+1. **API Keys**: Never expose API keys in client-side code
+2. **Wallet Context**: Only send public keys, never private keys
+3. **Intent Verification**: Always verify integrity before signing:
+   ```javascript
+   const isValid = await intent.verify();
+   if (!isValid) throw new Error('Invalid signature');
+   ```
+4. **Origin Validation**: Enclave validates request origin (configurable via `origin` option)
+5. **HTTPS**: SDK warns when using HTTP connections to non-localhost hosts
+
+## Performance
+
+When `debug: true`, the SDK logs detailed performance metrics:
+
+```javascript
+[Sona:Perf] Request completed in 245.67ms {
+  route: 'solend/deposit',
+  total_ms: 245.67,
+  meta: 1.23,           // Route metadata fetch
+  session: 0.45,        // Session key fetch
+  encrypt: 2.34,        // Client-side encryption
+  api: 240.12,          // Total API request
+  parse: 1.53,          // Response parsing
+  server_context_ms: 45.67,   // Server-side context
+  server_enclave_ms: 180.23,  // Time in enclave
+  server_total_ms: 225.9,     // Total server time
+  api_overhead_ms: 14.22      // Network overhead
+}
+```
+
+## Cryptography
+
+- **Encryption**: X25519 ECDH + XSalsa20-Poly1305 sealed box (libsodium-compatible)
+- **Signing**: Ed25519 with SHA-512
+- **Key Derivation**: HSalsa20 with "expand 32-byte k" sigma constant
+- **Nonce Derivation**: BLAKE2b(ephemeralPubkey || recipientPubkey)
+- **Libraries**: @noble/ciphers, @noble/curves, @noble/ed25519, @noble/hashes
+
+All cryptography is pure JavaScript with no native dependencies.
+
+## Browser Support
+
+Works in both Node.js and modern browsers:
+- Uses fetch API (Node 18+)
+- Browser-compatible base64 encoding/decoding
+- Pure JavaScript cryptography (no Buffer dependency)
+
+## Example: Complete Flow
+
+```javascript
+import { Sona } from '@sonabuild/kit';
+
+// 1. Initialize client
+const sona = new Sona({
+  wallet: wallet.publicKey.toBase58(),
+  apiKey: process.env.SONA_API_KEY
+});
+
+// 2. Discover available routes (optional - SDK does this automatically)
+const meta = await fetch('https://api.sona.build/meta').then(r => r.json());
+console.log('Available protocols:', Object.keys(meta.routes));
+
+// 3. Build transaction
+const intent = await sona.solend.deposit({
+  amount: 1000000,
+  userPubkey: wallet.publicKey.toBase58()
+});
+
+// 4. Verify integrity
+if (!await intent.verify()) {
+  throw new Error('Transaction integrity check failed');
+}
+
+// 5. Sign and send
+const signature = await intent.confirm(async (intents) => {
+  const txBase64 = intents[0].getTransaction();
+  const txBuffer = Buffer.from(txBase64, 'base64');
+  const transaction = Transaction.from(txBuffer);
+
+  transaction.sign(wallet);
+  const sig = await connection.sendRawTransaction(transaction.serialize());
+  await connection.confirmTransaction(sig);
+
+  return sig;
+});
+
+console.log('Transaction confirmed:', signature);
+```
+
+## Meta Endpoint Response Format
+
+```typescript
+{
+  routes: {
+    [route: string]: {
+      attested: boolean,  // Whether this route requires encryption
+      // Additional route metadata...
+    }
+  }
+}
+```
+
+To see all available routes for your API key:
+```bash
+curl https://api.sona.build/meta -H "x-api-key: your-key"
+```

@@ -12,7 +12,8 @@
   "files": [
     "dist/index.js",
     "dist/index.js.map",
-    "README.md"
+    "README.md",
+    "llms.txt"
   ],
   "scripts": {
     "test": "mocha --require test/setup.js 'test/**/*.test.js'",
