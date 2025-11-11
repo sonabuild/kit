@@ -390,6 +390,33 @@ Debug categories:
 
 See package.json for license information.
 
+## Publishing
+
+Publish a new version using semantic versioning:
+
+```bash
+npm run patch  # 1.0.0 -> 1.0.1 (bug fixes)
+npm run minor  # 1.0.0 -> 1.1.0 (new features)
+npm run major  # 1.0.0 -> 2.0.0 (breaking changes)
+```
+
+Each command runs tests, builds the bundled dist/index.js (65KB minified), bumps version, and publishes to npm.
+
+**Test before publishing:**
+```bash
+npm test              # Run tests
+npm run build         # Build dist/index.js
+npm pack --dry-run    # Preview package contents
+```
+
+**First time setup:**
+```bash
+npm login
+npm access ls-packages @sonabuild  # Verify access
+```
+
+The `prepublishOnly` hook automatically runs tests before any publish to prevent broken releases.
+
 ## Contributing
 
 This is an internal protocol toolkit. For issues or questions, contact the Sona development team.

@@ -1,16 +1,27 @@
 {
   "name": "@sonabuild/kit",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Protocol toolkit for Sona attested Solana transaction builders",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "author": "Asymmetric Information LLC",
   "license": "UNLICENSED",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./dist/index.js"
   },
+  "files": [
+    "dist/index.js",
+    "dist/index.js.map",
+    "README.md"
+  ],
   "scripts": {
-    "test": "mocha --require test/setup.js 'test/**/*.test.js'"
+    "test": "mocha --require test/setup.js 'test/**/*.test.js'",
+    "build": "esbuild src/index.js --bundle --minify --sourcemap --format=esm --platform=neutral --target=es2020 --outfile=dist/index.js",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm test && npm run build",
+    "patch": "npm test && npm run build && npm version patch && npm publish",
+    "minor": "npm test && npm run build && npm version minor && npm publish",
+    "major": "npm test && npm run build && npm version major && npm publish"
   },
   "dependencies": {
     "@noble/ciphers": "^1.0.0",
@@ -20,6 +31,7 @@
   },
   "devDependencies": {
     "chai": "^4.3.10",
+    "esbuild": "^0.27.0",
     "mocha": "^10.2.0"
   }
 }
