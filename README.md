@@ -69,26 +69,26 @@ src/
 ```
 Client                                    Enclave
   │                                          │
-  ├─── GET /session ──────────────────────► │
+  ├─── GET /session ───────────────────────► │
   │                                          │
-  │ ◄──── encryptionPubKey, integrityPubKey ┤
+  │ ◄──── encryptionPubKey, integrityPubKey  ┤
   │                                          │
-  ├─── Generate ephemeral X25519 keypair    │
-  ├─── ECDH shared secret                   │
-  ├─── Derive key via HSalsa20              │
-  ├─── BLAKE2b nonce derivation             │
-  ├─── XSalsa20-Poly1305 encryption         │
+  ├─── Generate ephemeral X25519 keypair     │
+  ├─── ECDH shared secret                    │
+  ├─── Derive key via HSalsa20               │
+  ├─── BLAKE2b nonce derivation              │
+  ├─── XSalsa20-Poly1305 encryption          │
   │                                          │
-  ├─── POST /protocol/action {ctB64} ─────► │
+  ├─── POST /protocol/action {ctB64} ──────► │
   │                                          │
   │                                  Decrypt │
   │                                  Build tx│
   │                                  Sign tx │
   │                                          │
-  │ ◄──── serializedMessage + integritySig ─┤
+  │ ◄──── serializedMessage + integritySig ──┤
   │                                          │
-  ├─── Verify Ed25519 signature             │
-  └─── Return Intent                        │
+  ├─── Verify Ed25519 signature              │
+  └─── Return Intent                         │
 ```
 
 ## API Reference
