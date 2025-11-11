@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Protocol toolkit for Sona attested Solana transaction builders",
   "main": "dist/index.js",
-  "author": "Asymmetric Information LLC",
+  "author": "Asymmetric Information Inc.",
   "license": "UNLICENSED",
   "exports": {
     ".": "./dist/index.js"
