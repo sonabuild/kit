@@ -18,6 +18,14 @@ const DEFAULT_TIMEOUT = 30000;
  * @throws {Error} If configuration is invalid
  */
 function validateConfig(opts) {
+  if (!opts.wallet) {
+    throw new Error('wallet is required - please provide a wallet address');
+  }
+
+  if (typeof opts.wallet !== 'string') {
+    throw new Error('wallet must be a string');
+  }
+
   if (opts.baseUrl !== undefined && typeof opts.baseUrl !== 'string') {
     throw new Error('baseUrl must be a string');
   }
@@ -32,10 +40,6 @@ function validateConfig(opts) {
 
   if (opts.apiKey !== undefined && typeof opts.apiKey !== 'string') {
     throw new Error('apiKey must be a string');
-  }
-
-  if (opts.wallet !== undefined && typeof opts.wallet !== 'string') {
-    throw new Error('wallet must be a string');
   }
 
   if (opts.origin !== undefined && typeof opts.origin !== 'string') {
@@ -76,19 +80,24 @@ export class Sona {
 
     this.baseUrl = opts.baseUrl || DEFAULT_BASE_URL;
     this.apiKey = opts.apiKey || null;
-    this.wallet = opts.wallet || null;
+    this.wallet = opts.wallet;
     this.origin = opts.origin || (typeof window !== 'undefined' ? window.location.origin : DEFAULT_ORIGIN);
     this.timeout = opts.timeout !== undefined ? opts.timeout : DEFAULT_TIMEOUT;
     this.headers = opts.headers || {};
 
     setDebug(!!opts.debug);
 
-    // Build context object for route execution
+    // Context (auto-injected into all requests)
+    this.context = {
+      wallet: this.wallet,
+      origin: this.origin
+    };
+
+    // Build full context object for route execution
     const ctx = {
       baseUrl: this.baseUrl,
       apiKey: this.apiKey,
-      wallet: this.wallet,
-      origin: this.origin,
+      context: this.context,
       timeout: this.timeout,
       headers: this.headers
     };
@@ -97,7 +106,17 @@ export class Sona {
 
     this._startSessionRefetch();
 
-    return makeClient(executeRoute);
+    const client = makeClient(executeRoute);
+
+    // Return proxy that merges Sona methods with dynamic client
+    return new Proxy(this, {
+      get(target, prop) {
+        // Return own properties first (like wallet, context, etc.)
+        if (prop in target) return target[prop];
+        // Otherwise delegate to dynamic client
+        return client[prop];
+      }
+    });
   }
 
   async _startSessionRefetch() {
