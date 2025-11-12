@@ -91,15 +91,15 @@ export function handle404(routeKey) {
  * Execute plain (non-attested) route
  * @param {Object} ctx - Context
  * @param {string} routeKey - Route key
- * @param {Object} payload - Request payload
+ * @param {Object} params - User params
  * @param {Object} timings - Timing object to track performance
  * @returns {Promise<any>} Response data
  */
-export async function executePlainRoute(ctx, routeKey, payload, timings) {
-  const body = payload || {};
-  if (ctx.wallet && !body.context) {
-    body.context = { wallet: ctx.wallet };
-  }
+export async function executePlainRoute(ctx, routeKey, params, timings) {
+  const body = {
+    context: ctx.context,
+    params: params || {}   // User params
+  };
 
   const requestId = generateRequestId();
 
@@ -124,46 +124,48 @@ export async function executePlainRoute(ctx, routeKey, payload, timings) {
   }
 
   const parseStart = performance.now();
-  const data = await res.json();
+  const result = await res.json();
 
   timings.parse = performance.now() - parseStart;
 
-  return data;
+  return result.data;
 }
 
 /**
- * Create encryption envelope for attested route
+ * Create payload to encrypt for attested route
  * @param {Object} ctx - Context
- * @param {Object} payload - Request payload
- * @returns {Object} Envelope payload
+ * @param {Object} params - User params
+ * @returns {Object} Payload to encrypt (envelope + context + params)
  */
-export function createEnvelope(ctx, payload) {
+export function createEncryptedPayload(ctx, params) {
   return {
-    t: Math.floor(Date.now() / 1000),
-    rid: crypto.randomUUID(),
-    origin: ctx.origin,
-    payload
+    envelope: {
+      t: Date.now(),
+      rid: crypto.randomUUID(),
+      origin: ctx.context.origin
+    },
+    context: ctx.context,  // { wallet, origin }
+    params: params || {}   // User params
   };
 }
 
 /**
  * Build request body for attested route
- * @param {string} ctB64 - Encrypted payload
- * @param {Object} payload - Original payload for hints
+ * @param {string} encrypted - Base64 encrypted payload
+ * @param {Object} ctx - Context
+ * @param {Object} params - User params
+ * @param {boolean} includeAttestation - Whether to include attestation in response
  * @returns {Object} Request body
  */
-export function buildAttestedRequestBody(ctB64, payload) {
-  const requestBody = {
-    ctB64,
-    paramsHint: payload
+export function buildAttestedRequestBody(encrypted, ctx, params, includeAttestation = true) {
+  return {
+    encrypted,
+    hint: {
+      context: ctx.context,
+      params: params || {}
+    },
+    includeAttestation
   };
-
-  // Include attestation flag if requested (reduces response size when false)
-  if (payload.includeAttestation !== undefined) {
-    requestBody.includeAttestation = payload.includeAttestation;
-  }
-
-  return requestBody;
 }
 
 /**
@@ -181,44 +183,48 @@ export function extractServerMetrics(res) {
 
 /**
  * Process attested route response
- * @param {Object} data - Response data
+ * @param {Object} data - Response data from enclave
  * @param {Object} session - Session with integrity key
- * @returns {Intent|Object} Intent or raw data
+ * @param {Object} timings - Timing object
+ * @returns {Intent} Intent wrapper for attested response
  */
-export function processAttestedResponse(data, session) {
-  // Check for stale ciphertext error and throw to trigger retry
+export function processAttestedResponse(data, session, timings) {
   if (data.error === 'stale ciphertext') {
     throw new Error('stale ciphertext');
   }
 
-  // Return Intent if enclave provided signature
-  if (data.serializedMessageB64 && data.integritySigB64) {
-    return new Intent({ ...data, integrityPubkeyB64: session.integrityPubkeyB64 });
-  }
-
-  return data;
+  return new Intent({
+    transaction: data.transaction,
+    attestation: data.attestation,
+    metadata: data.metadata,
+    data: data.data,
+    integrityPubkeyB64: session.integrityPubkeyB64
+  }, timings);
 }
 
 /**
  * Execute attested route with encryption
  * @param {Object} ctx - Context
  * @param {string} routeKey - Route key
- * @param {Object} payload - Request payload
+ * @param {Object} params - User params
  * @param {Object} timings - Timing object to track performance
+ * @param {Object} options - Additional options
  * @returns {Promise<Intent|Object>} Intent or response data
  */
-export async function executeAttestedRoute(ctx, routeKey, payload, timings) {
+export async function executeAttestedRoute(ctx, routeKey, params, timings, options = {}) {
   const sessionStart = performance.now();
   const session = await getSession(ctx.baseUrl, ctx.apiKey, ctx.timeout);
   timings.session = performance.now() - sessionStart;
 
-  const envelopePayload = createEnvelope(ctx, payload);
+  // Payload to encrypt (envelope + context + params)
+  const payloadToEncrypt = createEncryptedPayload(ctx, params);
 
   const encryptStart = performance.now();
-  const ctB64 = await encryptForEnclave(envelopePayload, session.encryptionPubKeyB64);
+  const encrypted = await encryptForEnclave(payloadToEncrypt, session.encryptionPubKeyB64);
   timings.encrypt = performance.now() - encryptStart;
 
-  const requestBody = buildAttestedRequestBody(ctB64, payload);
+  const includeAttestation = options.includeAttestation !== false;
+  const requestBody = buildAttestedRequestBody(encrypted, ctx, params, includeAttestation);
 
   const requestId = generateRequestId();
 
@@ -259,5 +265,5 @@ export async function executeAttestedRoute(ctx, routeKey, payload, timings) {
   // Store server metrics for logging
   timings.serverMetrics = serverMetrics;
 
-  return processAttestedResponse(data, session);
+  return processAttestedResponse(data, session, timings);
 }

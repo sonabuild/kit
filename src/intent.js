@@ -27,8 +27,45 @@ const base64ToUint8Array = (base64) => {
 };
 
 export class Intent {
-  constructor(obj) {
-    Object.assign(this, obj);
+  constructor(result, timings = {}) {
+    this.transaction = result.transaction;
+    this.attestation = result.attestation;
+    this.metadata = result.metadata;
+    this.data = result.data;
+    this.timings = timings;
+    this.integrityPubkeyB64 = result.integrityPubkeyB64;
+  }
+
+  /**
+   * Get operation data
+   * @returns {Object} Operation-specific data
+   */
+  getData() {
+    return this.data;
+  }
+
+  /**
+   * Get metadata
+   * @returns {Object} Metadata about operation
+   */
+  getMetadata() {
+    return this.metadata;
+  }
+
+  /**
+   * Get transaction
+   * @returns {string} Base64-encoded transaction
+   */
+  getTransaction() {
+    return this.transaction;
+  }
+
+  /**
+   * Get attestation
+   * @returns {Object} Attestation with PCRs and signature
+   */
+  getAttestation() {
+    return this.attestation;
   }
 
   /**
@@ -38,22 +75,16 @@ export class Intent {
   async verify() {
     debug('Attestation', 'Starting attestation verification');
 
-    if (!this.serializedMessageB64 || !this.integritySigB64 || !this.integrityPubkeyB64) {
+    if (!this.transaction || !this.attestation?.signature || !this.integrityPubkeyB64) {
       debug('Attestation', 'Verification failed: missing required fields');
       console.warn('[Sona] Intent missing required fields for verification');
       return false;
     }
 
-    debug('Attestation', 'All required fields present', {
-      hasMessage: !!this.serializedMessageB64,
-      hasSignature: !!this.integritySigB64,
-      hasPublicKey: !!this.integrityPubkeyB64
-    });
-
     try {
       debug('Attestation', 'Decoding base64 components');
-      const msg = base64ToUint8Array(this.serializedMessageB64);
-      const sig = base64ToUint8Array(this.integritySigB64);
+      const msg = base64ToUint8Array(this.transaction);
+      const sig = base64ToUint8Array(this.attestation.signature);
       const pub = base64ToUint8Array(this.integrityPubkeyB64);
 
       debug('Attestation', 'Decoded sizes', {
@@ -62,11 +93,7 @@ export class Intent {
         publicKeyBytes: pub.length
       });
 
-      debug('Attestation', 'Verifying Ed25519 signature with @noble/ed25519');
-      debug('Attestation', `Message (first 32 bytes): ${Array.from(msg.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join('')}...`);
-      debug('Attestation', `Signature: ${Array.from(sig).map(b => b.toString(16).padStart(2, '0')).join('')}`);
-      debug('Attestation', `Public Key: ${Array.from(pub).map(b => b.toString(16).padStart(2, '0')).join('')}`);
-
+      debug('Attestation', 'Verifying Ed25519 signature');
       const isValid = await ed.verify(sig, msg, pub);
 
       if (isValid) {
@@ -94,13 +121,5 @@ export class Intent {
       throw new Error('Sona: integrity verification failed');
     }
     return sendFn([this]);
-  }
-
-  /**
-   * Get serialized transaction for signing
-   * @returns {string} Base64-encoded transaction
-   */
-  getTransaction() {
-    return this.serializedMessageB64;
   }
 }
