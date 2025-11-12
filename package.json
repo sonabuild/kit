@@ -6,6 +6,9 @@
   "main": "dist/index.js",
   "author": "Asymmetric Information Inc.",
   "license": "UNLICENSED",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": "./dist/index.js"
   },
