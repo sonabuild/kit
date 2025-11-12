@@ -1,6 +1,6 @@
 {
   "name": "@sonabuild/kit",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "description": "Protocol toolkit for Sona attested Solana transaction builders",
   "main": "dist/index.js",
