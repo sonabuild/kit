@@ -5,26 +5,30 @@ describe('Intent', () => {
   describe('constructor', () => {
     it('should create Intent with provided properties', () => {
       const data = {
-        serializedMessageB64: 'message123',
-        integritySigB64: 'sig123',
+        transaction: 'tx123',
+        attestation: { signature: 'sig123', pcrs: {} },
+        metadata: { protocol: 'test' },
+        data: { result: 'success' },
         integrityPubkeyB64: 'pubkey123'
       };
 
       const intent = new Intent(data);
 
-      assert.equal(intent.serializedMessageB64, 'message123');
-      assert.equal(intent.integritySigB64, 'sig123');
+      assert.equal(intent.transaction, 'tx123');
+      assert.deepEqual(intent.attestation, { signature: 'sig123', pcrs: {} });
+      assert.deepEqual(intent.metadata, { protocol: 'test' });
+      assert.deepEqual(intent.data, { result: 'success' });
       assert.equal(intent.integrityPubkeyB64, 'pubkey123');
     });
   });
 
   describe('getTransaction', () => {
-    it('should return serialized message', () => {
+    it('should return transaction', () => {
       const intent = new Intent({
-        serializedMessageB64: 'message123'
+        transaction: 'tx123'
       });
 
-      assert.equal(intent.getTransaction(), 'message123');
+      assert.equal(intent.getTransaction(), 'tx123');
     });
   });
 
@@ -38,8 +42,8 @@ describe('Intent', () => {
 
     it('should return false for invalid signature', async () => {
       const intent = new Intent({
-        serializedMessageB64: 'bWVzc2FnZQ==',
-        integritySigB64: 'c2lnbmF0dXJl',
+        transaction: 'bWVzc2FnZQ==',
+        attestation: { signature: 'c2lnbmF0dXJl', pcrs: {} },
         integrityPubkeyB64: 'cHVia2V5'
       });
 

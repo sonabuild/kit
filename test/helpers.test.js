@@ -2,7 +2,7 @@ import { strict as assert } from 'assert';
 import {
   buildHeaders,
   handle404,
-  createEnvelope,
+  createEncryptedPayload,
   buildAttestedRequestBody,
   extractServerMetrics,
   processAttestedResponse
@@ -37,51 +37,54 @@ describe('Helpers', () => {
     });
   });
 
-  describe('createEnvelope', () => {
-    it('should create envelope with required fields', () => {
-      const ctx = { origin: 'https://app.sona.build' };
-      const payload = { test: 'data' };
+  describe('createEncryptedPayload', () => {
+    it('should create payload with envelope, context, and params', () => {
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const params = { amount: 100 };
 
-      const envelope = createEnvelope(ctx, payload);
+      const payload = createEncryptedPayload(ctx, params);
 
-      assert.ok(envelope.t);
-      assert.ok(envelope.rid);
-      assert.equal(envelope.origin, 'https://app.sona.build');
-      assert.deepEqual(envelope.payload, { test: 'data' });
+      assert.ok(payload.envelope);
+      assert.ok(payload.envelope.t);
+      assert.ok(payload.envelope.rid);
+      assert.equal(payload.envelope.origin, 'https://app.sona.build');
+      assert.deepEqual(payload.context, { wallet: 'ABC123', origin: 'https://app.sona.build' });
+      assert.deepEqual(payload.params, { amount: 100 });
     });
 
     it('should generate unique request IDs', () => {
-      const ctx = { origin: 'https://app.sona.build' };
-      const envelope1 = createEnvelope(ctx, {});
-      const envelope2 = createEnvelope(ctx, {});
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const payload1 = createEncryptedPayload(ctx, {});
+      const payload2 = createEncryptedPayload(ctx, {});
 
-      assert.notEqual(envelope1.rid, envelope2.rid);
+      assert.notEqual(payload1.envelope.rid, payload2.envelope.rid);
     });
   });
 
   describe('buildAttestedRequestBody', () => {
-    it('should build basic request body', () => {
-      const body = buildAttestedRequestBody('encrypted123', { test: 'data' });
+    it('should build request body with encrypted payload and hint', () => {
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const params = { amount: 100 };
+      const body = buildAttestedRequestBody('encrypted123', ctx, params);
 
-      assert.deepEqual(body, {
-        ctB64: 'encrypted123',
-        paramsHint: { test: 'data' }
-      });
+      assert.equal(body.encrypted, 'encrypted123');
+      assert.deepEqual(body.hint.context, { wallet: 'ABC123', origin: 'https://app.sona.build' });
+      assert.deepEqual(body.hint.params, { amount: 100 });
+      assert.equal(body.includeAttestation, true);
     });
 
-    it('should include attestation flag when specified', () => {
-      const body = buildAttestedRequestBody('encrypted123', {
-        test: 'data',
-        includeAttestation: false
-      });
+    it('should include attestation flag when true by default', () => {
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const body = buildAttestedRequestBody('encrypted123', ctx, {});
+
+      assert.equal(body.includeAttestation, true);
+    });
+
+    it('should allow disabling attestation', () => {
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const body = buildAttestedRequestBody('encrypted123', ctx, {}, false);
 
       assert.equal(body.includeAttestation, false);
-    });
-
-    it('should not include attestation flag when undefined', () => {
-      const body = buildAttestedRequestBody('encrypted123', { test: 'data' });
-
-      assert.equal(body.includeAttestation, undefined);
     });
   });
 
@@ -150,13 +153,15 @@ describe('Helpers', () => {
       assert.equal(result.integrityPubkeyB64, 'pubkey123');
     });
 
-    it('should return raw data when no signature', () => {
-      const data = { result: 'success' };
+    it('should return Intent even without signature', () => {
+      const data = { transaction: 'tx123', data: { result: 'success' } };
       const session = { integrityPubkeyB64: 'pubkey123' };
 
       const result = processAttestedResponse(data, session);
 
-      assert.deepEqual(result, { result: 'success' });
+      assert.equal(result.constructor.name, 'Intent');
+      assert.equal(result.transaction, 'tx123');
+      assert.deepEqual(result.data, { result: 'success' });
     });
   });
 });

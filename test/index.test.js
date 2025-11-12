@@ -25,9 +25,16 @@ describe('Index', () => {
   });
 
   describe('Sona', () => {
-    it('should create instance with default options', () => {
-      const sona = new Sona();
+    it('should require wallet parameter', () => {
+      assert.throws(() => {
+        new Sona();
+      }, /wallet is required/);
+    });
+
+    it('should create instance with wallet', () => {
+      const sona = new Sona({ wallet: 'wallet123' });
       assert.ok(sona);
+      assert.equal(sona.wallet, 'wallet123');
     });
 
     it('should create instance with custom options', () => {
@@ -39,12 +46,18 @@ describe('Index', () => {
         debug: false
       });
       assert.ok(sona);
+      assert.equal(sona.wallet, 'wallet123');
+      assert.equal(sona.origin, 'https://custom.origin');
     });
 
-    it('should return proxy client', () => {
-      const sona = new Sona();
-      assert.equal(typeof sona, 'function');
+    it('should return proxy client with dynamic protocol access', () => {
+      const sona = new Sona({ wallet: 'wallet123' });
+      assert.equal(typeof sona, 'object');
+      assert.ok(sona.wallet);
+      assert.ok(sona.context);
+      // Dynamic protocol access through proxy
       assert.equal(typeof sona.protocol, 'function');
+      assert.equal(typeof sona.solend, 'function');
     });
   });
 });
