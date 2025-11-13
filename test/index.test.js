@@ -34,7 +34,7 @@ describe('Index', () => {
     it('should create instance with wallet', () => {
       const sona = new Sona({ wallet: 'wallet123' });
       assert.ok(sona);
-      assert.equal(sona.wallet, 'wallet123');
+      assert.equal(sona.context.wallet, 'wallet123');
     });
 
     it('should create instance with custom options', () => {
@@ -46,7 +46,7 @@ describe('Index', () => {
         debug: false
       });
       assert.ok(sona);
-      assert.equal(sona.wallet, 'wallet123');
+      assert.equal(sona.context.wallet, 'wallet123');
       assert.equal(sona.origin, 'https://custom.origin');
     });
 

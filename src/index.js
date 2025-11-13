@@ -80,7 +80,6 @@ export class Sona {
 
     this.baseUrl = opts.baseUrl || DEFAULT_BASE_URL;
     this.apiKey = opts.apiKey || null;
-    this.wallet = opts.wallet;
     this.origin = opts.origin || (typeof window !== 'undefined' ? window.location.origin : DEFAULT_ORIGIN);
     this.timeout = opts.timeout !== undefined ? opts.timeout : DEFAULT_TIMEOUT;
     this.headers = opts.headers || {};
@@ -89,7 +88,7 @@ export class Sona {
 
     // Context (auto-injected into all requests)
     this.context = {
-      wallet: this.wallet,
+      wallet: opts.wallet,
       origin: this.origin
     };
 
