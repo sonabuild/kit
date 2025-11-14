@@ -8,7 +8,7 @@ import { _callRoute } from './internal-call.js';
 import { setDebug } from './logger.js';
 import { getSession } from './session.js';
 
-const DEFAULT_ORIGIN = 'https://app.sona.build';
+const DEFAULT_ORIGIN = 'https://sona.build';
 const DEFAULT_BASE_URL = 'https://api.sona.build';
 const DEFAULT_TIMEOUT = 30000;
 
@@ -70,7 +70,7 @@ export class Sona {
    * @param {string} [opts.baseUrl='https://api.sona.build'] - API base URL
    * @param {string} [opts.apiKey] - Optional API key
    * @param {string} [opts.wallet] - Wallet public key
-   * @param {string} [opts.origin] - Origin for enclave validation (defaults to window.location.origin or 'https://app.sona.build')
+   * @param {string} [opts.origin] - Origin for enclave validation (defaults to window.location.origin or 'https://sona.build')
    * @param {number} [opts.timeout=30000] - Request timeout in milliseconds
    * @param {Object} [opts.headers] - Custom headers to include in all requests
    * @param {boolean} [opts.debug=false] - Enable debug logging

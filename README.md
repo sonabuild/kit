@@ -103,11 +103,11 @@ const sona = new Sona({ wallet: 'your-wallet-pubkey' });
 
 // Advanced configuration
 const sona = new Sona({
-  baseUrl: 'https://api.sona.build',  // API base URL (default)
+  baseUrl: 'https://api.sona.build',   // API base URL (default)
   apiKey: 'your-api-key',              // Optional API key
   wallet: 'your-wallet-pubkey',        // Wallet public key for context
-  origin: 'https://app.sona.build',   // Origin for enclave validation (default)
-  timeout: 30000,                       // Request timeout in ms (default)
+  origin: 'https://sona.build',        // Origin for enclave validation (default)
+  timeout: 30000,                      // Request timeout in ms (default)
   headers: {                           // Custom headers (optional)
     'x-app-version': '1.0.0'
   },
@@ -119,7 +119,7 @@ Options:
 - `wallet` (string, optional): Wallet public key for context
 - `baseUrl` (string): API base URL (default: 'https://api.sona.build')
 - `apiKey` (string, optional): API authentication key
-- `origin` (string, optional): Origin for enclave validation (default: window.location.origin or 'https://app.sona.build')
+- `origin` (string, optional): Origin for enclave validation (default: window.location.origin or 'https://sona.build')
 - `timeout` (number): Request timeout in milliseconds (default: 30000)
 - `headers` (object, optional): Custom headers to include in all requests
 - `debug` (boolean): Enable debug logging (default: false)

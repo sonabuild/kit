@@ -19,7 +19,7 @@ describe('Internal Call', () => {
         baseUrl: 'http://localhost:8080',
         apiKey: 'test-key',
         wallet: 'wallet123',
-        origin: 'https://app.sona.build'
+        origin: 'https://sona.build'
       };
       const pathArray = ['test', 'route'];
       const payload = { test: 'data' };

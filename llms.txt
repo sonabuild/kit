@@ -40,7 +40,7 @@ new Sona({
   wallet: string,           // Wallet public key (required for most operations)
   baseUrl: string,          // API endpoint (default: 'https://api.sona.build')
   apiKey: string,           // Optional API authentication key
-  origin: string,           // Origin for enclave validation (default: 'https://app.sona.build')
+  origin: string,           // Origin for enclave validation (default: 'https://sona.build')
   timeout: number,          // Request timeout in ms (default: 30000)
   headers: object,          // Custom headers for all requests
   debug: boolean            // Enable debug logging (default: false)

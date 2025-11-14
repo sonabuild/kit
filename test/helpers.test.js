@@ -39,7 +39,7 @@ describe('Helpers', () => {
 
   describe('createEncryptedPayload', () => {
     it('should create payload with envelope, context, and params', () => {
-      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://sona.build' } };
       const params = { amount: 100 };
 
       const payload = createEncryptedPayload(ctx, params);
@@ -47,13 +47,13 @@ describe('Helpers', () => {
       assert.ok(payload.envelope);
       assert.ok(payload.envelope.t);
       assert.ok(payload.envelope.rid);
-      assert.equal(payload.envelope.origin, 'https://app.sona.build');
-      assert.deepEqual(payload.context, { wallet: 'ABC123', origin: 'https://app.sona.build' });
+      assert.equal(payload.envelope.origin, 'https://sona.build');
+      assert.deepEqual(payload.context, { wallet: 'ABC123', origin: 'https://sona.build' });
       assert.deepEqual(payload.params, { amount: 100 });
     });
 
     it('should generate unique request IDs', () => {
-      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://sona.build' } };
       const payload1 = createEncryptedPayload(ctx, {});
       const payload2 = createEncryptedPayload(ctx, {});
 
@@ -63,25 +63,25 @@ describe('Helpers', () => {
 
   describe('buildAttestedRequestBody', () => {
     it('should build request body with encrypted payload and hint', () => {
-      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://sona.build' } };
       const params = { amount: 100 };
       const body = buildAttestedRequestBody('encrypted123', ctx, params);
 
       assert.equal(body.encrypted, 'encrypted123');
-      assert.deepEqual(body.hint.context, { wallet: 'ABC123', origin: 'https://app.sona.build' });
+      assert.deepEqual(body.hint.context, { wallet: 'ABC123', origin: 'https://sona.build' });
       assert.deepEqual(body.hint.params, { amount: 100 });
       assert.equal(body.includeAttestation, true);
     });
 
     it('should include attestation flag when true by default', () => {
-      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://sona.build' } };
       const body = buildAttestedRequestBody('encrypted123', ctx, {});
 
       assert.equal(body.includeAttestation, true);
     });
 
     it('should allow disabling attestation', () => {
-      const ctx = { context: { wallet: 'ABC123', origin: 'https://app.sona.build' } };
+      const ctx = { context: { wallet: 'ABC123', origin: 'https://sona.build' } };
       const body = buildAttestedRequestBody('encrypted123', ctx, {}, false);
 
       assert.equal(body.includeAttestation, false);

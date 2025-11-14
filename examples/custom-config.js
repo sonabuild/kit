@@ -64,7 +64,7 @@ async function main() {
   console.log('  - Uses all defaults');
   console.log('  - baseUrl: https://api.sona.build');
   console.log('  - timeout: 30000ms');
-  console.log('  - origin: https://app.sona.build\n');
+  console.log('  - origin: https://sona.build\n');
 }
 
 main();
